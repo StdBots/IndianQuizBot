@@ -1,0 +1,35 @@
+{
+  "name": "IndianQuizBot",
+  "description": "Telegram Quiz Bot - Same as @QuizBot, but yours!",
+  "keywords": ["telegram", "bot", "quiz", "pyrogram", "python"],
+  "website": "https://github.com/yourusername/indianquizbot",
+  "repository": "https://github.com/yourusername/indianquizbot",
+  "logo": "https://i.imgur.com/placeholder.png",
+  "success_url": "/",
+  "env": {
+    "BOT_TOKEN": {
+      "description": "Your Telegram Bot Token from @BotFather",
+      "required": true
+    },
+    "API_ID": {
+      "description": "Your Telegram API ID from https://my.telegram.org/apps",
+      "required": true
+    },
+    "API_HASH": {
+      "description": "Your Telegram API Hash from https://my.telegram.org/apps",
+      "required": true
+    }
+  },
+  "formation": {
+    "worker": {
+      "quantity": 1,
+      "size": "basic"
+    }
+  },
+  "buildpacks": [
+    {
+      "url": "heroku/python"
+    }
+  ],
+  "stack": "heroku-22"
+}
