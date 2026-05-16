@@ -4,7 +4,7 @@ import random
 import time
 from datetime import datetime
 from typing import Optional
-from pyrogram import Client, filters
+from pyrogram import Client, filters, raw
 from pyrogram.types import (
     Message,
     InlineKeyboardMarkup,
@@ -650,15 +650,26 @@ async def run_quiz(client: Client, chat_id: int):
 
 
 # ──────────────────────────────────────────────
-#  POLL ANSWER HANDLER
+#  POLL ANSWER HANDLER — via raw update
 # ──────────────────────────────────────────────
-@app.on_poll_answer()
-async def handle_poll_answer(client: Client, poll_answer):
-    user_id = poll_answer.user.id
-    option_ids = poll_answer.option_ids
+@app.on_raw_update()
+async def handle_raw_update(client: Client, update, users, chats):
+    # UpdateMessagePollVote is fired when a user votes in a quiz/poll
+    if not isinstance(update, raw.types.UpdateMessagePollVote):
+        return
+
+    poll_id = str(update.poll_id)
+    option_ids = [opt for opt in update.options]  # list of bytes
+    user_id = update.user_id
+
+    # Get user's first name
+    user_name = "Unknown"
+    if user_id in users:
+        u = users[user_id]
+        user_name = u.first_name or "Unknown"
 
     for chat_id, aq in list(active_quizzes.items()):
-        if aq.get("current_poll_id") != poll_answer.poll_id:
+        if str(aq.get("current_poll_id", "")) != poll_id:
             continue
         if user_id in aq["answered"]:
             return
@@ -667,15 +678,20 @@ async def handle_poll_answer(client: Client, poll_answer):
         q = aq["questions"][aq["q_index"]]
         if user_id not in aq["scores"]:
             aq["scores"][user_id] = {
-                "name": poll_answer.user.first_name,
+                "name": user_name,
                 "score": 0,
                 "time": 0.0,
             }
 
-        if option_ids and option_ids[0] == q["correct"]:
-            elapsed = round(time.time() - aq.get("q_start_time", time.time()), 1)
-            aq["scores"][user_id]["score"] += 1
-            aq["scores"][user_id]["time"] += elapsed
+        # option_ids is a list of bytes; each byte encodes the chosen option index
+        if option_ids:
+            chosen = option_ids[0]
+            # Pyrogram raw: option is bytes b'\x00', b'\x01', etc.
+            chosen_index = chosen[0] if isinstance(chosen, (bytes, bytearray)) else int(chosen)
+            if chosen_index == q["correct"]:
+                elapsed = round(time.time() - aq.get("q_start_time", time.time()), 1)
+                aq["scores"][user_id]["score"] += 1
+                aq["scores"][user_id]["time"] += elapsed
         break
 
 
